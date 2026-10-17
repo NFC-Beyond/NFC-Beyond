@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NFC - Beyond</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: menu column + sticky order ticket on the right; staff view uses kitchen-ticket cards in a wrapping grid */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #16213a;
+  --muted: #5c6680;
+  --line: #dde1ea;
+  --accent: #f2b619;      /* ticket yellow */
+  --accent-ink: #1a1405;
+  --brand: #1f3a8a;       /* counter navy */
+  --ok: #1d8a4e; --warn: #c27a00; --bad: #c0392b; --info: #2563eb;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1422; --surface: #171e30; --ink: #e8ecf5; --muted: #9aa3ba; --line: #2a3350;
+    --accent: #f5c43d; --accent-ink: #1a1405; --brand: #8fb0ff;
+    --ok: #4cc98a; --warn: #f0a93a; --bad: #ff7b6b; --info: #7aa7ff;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.15; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+[hidden] { display: none !important; }
+
+/* Header */
+header.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-block: 18px 14px; border-bottom: 2px solid var(--ink); margin-bottom: 20px;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+.brand small { font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.conn { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.conn i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); display: inline-block; }
+.conn.on i { background: var(--ok); }
+
+/* Buttons */
+.btn { border: 1.5px solid var(--ink); background: transparent; padding: 8px 14px; border-radius: 999px; font-weight: 600; }
+.btn:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.primary:hover { background: color-mix(in srgb, var(--ink) 85%, var(--brand)); }
+.btn.yellow { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.small { padding: 5px 11px; font-size: 13px; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; font-size: 13px; }
+
+/* Customer layout */
+.shop { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+@media (max-width: 860px) { .shop { grid-template-columns: minmax(0, 1fr); } }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 13px; font-size: 13px; font-weight: 600; }
+.chip.on { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.cat-title { font-size: 13px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 22px 0 10px; }
+.cat-title:first-child { margin-top: 0; }
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.item {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+.item { overflow: hidden; }
+.item .pic { display: block; width: calc(100% + 28px); max-width: none; margin: -14px -14px 4px; aspect-ratio: 4 / 3; object-fit: cover; background: var(--line); }
+.photo-field { display: grid; gap: 8px; }
+.photo-preview { width: 100%; max-width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+.photo-drop { display: grid; place-items: center; text-align: center; aspect-ratio: 4 / 3; border: 2px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 400; padding: 10px; cursor: pointer; }
+.photo-drop:hover, .photo-drop.over { border-color: var(--ink); color: var(--ink); }
+.thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; display: block; background: var(--line); }
+.thumb.none { display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+.item h3 { font-size: 17px; font-weight: 600; }
+.item p { margin: 0; color: var(--muted); font-size: 13.5px; flex: 1; }
+.item .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.price { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+.stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--ink); border-radius: 999px; overflow: hidden; }
+.stepper button { border: 0; background: transparent; width: 32px; height: 30px; font-weight: 700; font-size: 16px; }
+.stepper button:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.stepper span { min-width: 22px; text-align: center; font-family: var(--mono); font-weight: 700; }
+
+/* Ticket (cart + staff orders) */
+.ticket {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  position: relative; overflow: hidden;
+}
+.ticket::before { content: ""; display: block; height: 8px; background: var(--accent); }
+.ticket .in { padding: 16px; display: grid; gap: 12px; }
+.perf { border-top: 2px dashed var(--line); margin: 0 -16px; }
+.cart { position: sticky; top: 16px; }
+.cart h2 { font-size: 20px; }
+.lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lines li { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px; align-items: baseline; font-size: 14px; }
+.lines .q { font-family: var(--mono); color: var(--muted); }
+.lines .n { overflow-wrap: anywhere; }
+.total { display: flex; justify-content: space-between; font-weight: 700; font-size: 17px; }
+.total .price { font-size: 18px; }
+.empty { color: var(--muted); font-size: 14px; text-align: center; padding: 10px 0; }
+label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+input[type=text], input[type=tel], input[type=number], input[type=password], select, textarea {
+  width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--bg); font-weight: 400;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: none; }
+textarea { resize: vertical; min-height: 60px; }
+.err { color: var(--bad); font-size: 13px; margin: 0; }
+
+/* Mobile cart bar */
+.cartbar {
+  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--ink); color: var(--bg);
+}
+.cartbar button { width: 100%; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 999px; padding: 11px; font-weight: 700; }
+@media (max-width: 860px) { .cartbar.show { display: block; } body.has-bar { padding-bottom: 80px; } .cart { position: static; } }
+
+/* Order tracker */
+.track { max-width: 520px; margin: 10px auto 40px; }
+.track .num { font-family: var(--mono); font-size: 54px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; }
+.steps li { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: center; padding: 8px 0; color: var(--muted); }
+.steps li b { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: inline-block; }
+.steps li.done { color: var(--ink); }
+.steps li.done b { background: var(--ok); border-color: var(--ok); }
+.steps li.now { color: var(--ink); font-weight: 600; }
+.steps li.now b { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* Staff */
+.tabs { display: flex; gap: 6px; border-bottom: 1.5px solid var(--line); margin-bottom: 18px; flex-wrap: wrap; }
+.tab { border: 0; background: none; padding: 10px 14px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1.5px; }
+.tab.on { color: var(--ink); border-bottom-color: var(--accent); }
+.tab .count { font-family: var(--mono); font-size: 12px; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
+.toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
+.board { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; align-items: start; }
+.onum { font-family: var(--mono); font-size: 26px; font-weight: 700; }
+.ohead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.note { font-size: 13px; background: color-mix(in srgb, var(--accent) 18%, transparent); padding: 6px 9px; border-radius: 6px; overflow-wrap: anywhere; }
+.pill { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.s-new { background: color-mix(in srgb, var(--info) 18%, transparent); color: var(--info); }
+.s-preparing { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.s-ready { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); }
+.s-done { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+.s-cancelled { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+.ticket.fresh { animation: pop 1.2s ease-out; }
+@keyframes pop { 0% { box-shadow: 0 0 0 6px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.menu-admin { display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .menu-admin { grid-template-columns: minmax(0,1fr); } }
+.form { display: grid; gap: 12px; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td.off { color: var(--muted); text-decoration: line-through; }
+.gate { max-width: 360px; margin: 40px auto; }
+footer { margin: 40px 0 24px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-weight: 600; z-index: 20;
+}
+@media (prefers-reduced-motion: reduce) { .ticket.fresh { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1 id="shopName">NFC - Beyond</h1>
+      <small id="viewLabel">Order online</small>
+    </div>
+    <span class="conn" id="conn"><i></i><span>Connecting…</span></span>
+  </header>
+
+  <!-- ============ CUSTOMER ============ -->
+  <main id="customer">
+    <section id="shopView" class="shop">
+      <div>
+        <div class="chips" id="chips"></div>
+        <div id="menuList"><p class="empty">Loading menu…</p></div>
+      </div>
+      <aside class="cart" id="cart">
+        <div class="ticket"><div class="in">
+          <h2>Your order</h2>
+          <ul class="lines" id="cartLines"></ul>
+          <div class="perf"></div>
+          <div class="total"><span>Total</span><span class="price" id="cartTotal">0</span></div>
+          <form id="checkout" class="form" novalidate>
+            <label for="cName">Name<input type="text" id="cName" autocomplete="name" required></label>
+            <label for="cPhone">Phone<input type="tel" id="cPhone" autocomplete="tel" required></label>
+            <label for="cNote">Notes (optional)<textarea id="cNote" placeholder="No onions, extra sauce…"></textarea></label>
+            <p class="err" id="checkoutErr" hidden></p>
+            <button class="btn yellow" type="submit" id="placeBtn">Place order</button>
+          </form>
+        </div></div>
+      </aside>
+    </section>
+
+    <section id="trackView" class="track" hidden>
+      <div class="ticket"><div class="in">
+        <span class="meta">Your order number</span>
+        <div class="num" id="tNum">#—</div>
+        <p class="meta" id="tSummary"></p>
+        <div class="perf"></div>
+        <ol class="steps" id="tSteps"></ol>
+        <p class="err" id="tCancelled" hidden>This order was cancelled. Please contact the shop.</p>
+        <div class="perf"></div>
+        <button class="btn" id="newOrderBtn" type="button">Start a new order</button>
+      </div></div>
+    </section>
+  </main>
+
+  <div class="cartbar" id="cartbar"><button type="button" id="cartbarBtn">View order</button></div>
+
+  <!-- ============ STAFF ============ -->
+  <main id="staff" hidden>
+    <section id="gate" class="gate">
+      <div class="ticket"><div class="in">
+        <h2 id="gateTitle">Staff sign-in</h2>
+        <form id="pinForm" class="form">
+          <label for="pin">Staff PIN<input type="password" id="pin" inputmode="numeric" autocomplete="off"></label>
+          <p class="err" id="pinErr" hidden>That PIN is not correct.</p>
+          <button class="btn primary" type="submit">Open staff panel</button>
+        </form>
+        <form id="setupForm" class="form" hidden>
+          <p class="meta" style="margin:0">No staff PIN is saved in the database yet. Create one now; you'll need it every time you open the staff panel.</p>
+          <label for="newPin1">New PIN<input type="password" id="newPin1" inputmode="numeric" autocomplete="new-password"></label>
+          <label for="newPin2">Repeat PIN<input type="password" id="newPin2" inputmode="numeric" autocomplete="new-password"></label>
+          <p class="err" id="setupErr" hidden></p>
+          <button class="btn primary" type="submit">Save PIN and open panel</button>
+        </form>
+      </div></div>
+    </section>
+
+    <section id="panel" hidden>
+      <nav class="tabs">
+        <button class="tab on" data-tab="orders" type="button">Orders <span class="count" id="activeCount">0</span></button>
+        <button class="tab" data-tab="menu" type="button">Menu items</button>
+        <button class="tab" data-tab="settings" type="button">Settings</button>
+        <button class="btn small" id="lockBtn" type="button" style="margin-left:auto;align-self:center">Lock</button>
+      </nav>
+
+      <div id="tab-orders">
+        <div class="toolbar">
+          <div class="chips" style="margin:0">
+            <button class="chip on" data-of="active" type="button">Active</button>
+            <button class="chip" data-of="ready" type="button">Ready</button>
+            <button class="chip" data-of="all" type="button">All</button>
+          </div>
+          <label class="check" for="soundOn"><input type="checkbox" id="soundOn" checked> Sound on new order</label>
+        </div>
+        <div class="board" id="board"></div>
+      </div>
+
+      <div id="tab-menu" hidden>
+        <div class="menu-admin">
+          <div class="ticket"><div class="in">
+            <h2 id="formTitle">Add item</h2>
+            <form id="itemForm" class="form" novalidate>
+              <label for="iName">Name<input type="text" id="iName" required></label>
+              <label for="iCat">Category<input type="text" id="iCat" list="catList" placeholder="e.g. Burgers"></label>
+              <datalist id="catList"></datalist>
+              <label for="iPrice">Price<input type="number" id="iPrice" min="0" step="0.001" required></label>
+              <label for="iDesc">Description<textarea id="iDesc"></textarea></label>
+              <div class="photo-field">
+                <span style="font-size:13px;font-weight:600">Photo (optional)</span>
+                <label class="photo-drop" id="photoDrop" for="iPhoto">Click to choose a photo, or drag one here</label>
+                <input type="file" id="iPhoto" accept="image/*" hidden>
+                <img class="photo-preview" id="photoPreview" alt="Photo preview" hidden>
+                <div class="actions" id="photoActions" hidden>
+                  <label class="btn small" for="iPhoto" style="display:inline-block">Change photo</label>
+                  <button class="btn small danger" type="button" id="removePhotoBtn">Remove photo</button>
+                </div>
+                <label for="iPhotoUrl" style="font-weight:400;color:var(--muted)">…or paste an image link
+                  <input type="text" id="iPhotoUrl" placeholder="https://…" inputmode="url">
+                </label>
+              </div>
+              <label class="check" for="iAvail"><input type="checkbox" id="iAvail" checked> Available to order</label>
+              <p class="err" id="itemErr" hidden></p>
+              <div class="actions">
+                <button class="btn primary" type="submit" id="saveItemBtn">Add item</button>
+                <button class="btn" type="button" id="cancelEditBtn" hidden>Cancel edit</button>
+              </div>
+            </form>
+          </div></div>
+          <div>
+            <div class="toolbar">
+              <h2 style="font-size:20px">Current menu</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th></th><th>Item</th><th>Category</th><th>Price</th><th>Status</th><th></th></tr></thead>
+                <tbody id="adminRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-settings" hidden>
+        <div class="ticket" style="max-width:460px"><div class="in">
+          <h2>Shop settings</h2>
+          <p class="meta" style="margin:0">Saved in the database. Changes show on every customer's page right away.</p>
+          <form id="settingsForm" class="form" novalidate>
+            <label for="sName">Shop name<input type="text" id="sName"></label>
+            <label for="sCurrency">Currency<input type="text" id="sCurrency" placeholder="KWD"></label>
+            <label for="sDecimals">Decimal places
+              <select id="sDecimals"><option value="3">3 (1.750)</option><option value="2">2 (1.75)</option><option value="0">0 (2)</option></select>
+            </label>
+            <div class="perf"></div>
+            <label for="sPin1">New staff PIN <span style="font-weight:400;color:var(--muted)">(leave empty to keep the current one)</span><input type="password" id="sPin1" inputmode="numeric" autocomplete="new-password"></label>
+            <label for="sPin2">Repeat new PIN<input type="password" id="sPin2" inputmode="numeric" autocomplete="new-password"></label>
+            <p class="err" id="settingsErr" hidden></p>
+            <button class="btn primary" type="submit">Save settings</button>
+          </form>
+        </div></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Orders update live.</span>
+    <span><a href="#" id="toCustomer" class="link">Customer page</a> · <a href="#staff" class="link">Staff</a></span>
+  </footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<!-- Firebase (compat build) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* The only thing stored in this file is the database address.
+   Shop name, currency, staff PIN, menu and orders all live in the database
+   (settings → /settings, menu → /menu, orders → /orders). */
+const DATABASE_URL = "https://test-3bdca-default-rtdb.firebaseio.com";
+
+firebase.initializeApp({ databaseURL: DATABASE_URL });
+const db = firebase.database();
+const TS = firebase.database.ServerValue.TIMESTAMP;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+let settings = null;   // filled from /settings in the database
+const dec = () => (settings && Number.isInteger(Number(settings.decimals)) && settings.decimals !== "" && settings.decimals != null) ? Number(settings.decimals) : 3;
+const cur = () => (settings && settings.currency) || "KWD";
+const money = n => (Number(n) || 0).toFixed(dec()) + " " + cur();
+const dateTimeOf = ts => ts ? new Date(ts).toLocaleString([], { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+const pad = n => String(n).padStart(2, "0");
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
+};
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2200);
+}
+
+/* ---------- settings from the database ---------- */
+db.ref("settings").on("value", s => {
+  settings = s.val() || {};
+  const name = settings.shopName || "NFC - Beyond";
+  $("shopName").textContent = name; document.title = name;
+  renderShop(); renderAdmin(); if (ordersStarted) renderBoard();
+  updateGate(); fillSettingsForm();
+});
+
+/* ---------- connection status ---------- */
+db.ref(".info/connected").on("value", s => {
+  const on = s.val() === true;
+  $("conn").classList.toggle("on", on);
+  $("conn").lastElementChild.textContent = on ? "Live" : "Offline";
+});
+
+/* ---------- shared menu data ---------- */
+let menu = {};
+db.ref("menu").on("value", snap => {
+  menu = snap.val() || {};
+  renderShop();
+  renderAdmin();
+}, err => {
+  $("menuList").innerHTML = `<p class="err">Could not read the menu: ${esc(err.message)}. Check your database rules.</p>`;
+});
+const sortedItems = () => Object.entries(menu)
+  .map(([id, v]) => ({ id, ...v }))
+  .sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.name || "").localeCompare(b.name || ""));
+
+/* =================================================================
+   CUSTOMER
+   ================================================================= */
+let cart = {};
+try { cart = JSON.parse(store.get("cart") || "{}") || {}; } catch { cart = {}; }
+let catFilter = "All";
+const saveCart = () => store.set("cart", JSON.stringify(cart));
+
+function renderShop() {
+  const items = sortedItems().filter(i => i.available !== false);
+  const cats = [...new Set(items.map(i => i.category || "Other"))];
+  if (catFilter !== "All" && !cats.includes(catFilter)) catFilter = "All";
+
+  $("chips").innerHTML = cats.length > 1
+    ? ["All", ...cats].map(c => `<button type="button" class="chip ${c === catFilter ? "on" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("")
+    : "";
+
+  if (!items.length) {
+    $("menuList").innerHTML = `<p class="empty">No items are available right now. Please check back soon.</p>`;
+  } else {
+    const groups = {};
+    items.forEach(i => (groups[i.category || "Other"] ||= []).push(i));
+    $("menuList").innerHTML = Object.entries(groups)
+      .filter(([c]) => catFilter === "All" || c === catFilter)
+      .map(([c, list]) => `
+        <h2 class="cat-title">${esc(c)}</h2>
+        <div class="items">${list.map(itemCard).join("")}</div>`).join("");
+  }
+  // drop cart lines for items that disappeared or became unavailable
+  Object.keys(cart).forEach(id => { if (!menu[id] || menu[id].available === false) delete cart[id]; });
+  renderCart();
+}
+
+function itemCard(i) {
+  const q = cart[i.id] || 0;
+  const control = q
+    ? `<span class="stepper"><button type="button" data-dec="${i.id}" aria-label="Remove one">−</button><span>${q}</span><button type="button" data-inc="${i.id}" aria-label="Add one">+</button></span>`
+    : `<button type="button" class="btn small primary" data-inc="${i.id}">Add</button>`;
+  return `<article class="item">
+    ${safeImg(i.image) ? `<img class="pic" src="${esc(i.image)}" alt="${esc(i.name)}" loading="lazy">` : ""}
+    <h3>${esc(i.name)}</h3>
+    <p>${esc(i.description || "")}</p>
+    <div class="row"><span class="price">${money(i.price)}</span>${control}</div>
+  </article>`;
+}
+
+function cartTotal() {
+  return Object.entries(cart).reduce((s, [id, q]) => s + (menu[id] ? Number(menu[id].price) * q : 0), 0);
+}
+function renderCart() {
+  const lines = Object.entries(cart).filter(([id]) => menu[id]);
+  $("cartLines").innerHTML = lines.length
+    ? lines.map(([id, q]) => `<li><span class="q">${q}×</span><span class="n">${esc(menu[id].name)}</span><span class="price">${money(menu[id].price * q)}</span></li>`).join("")
+    : `<li class="empty" style="display:block">Add items from the menu to start your order.</li>`;
+  const total = cartTotal();
+  $("cartTotal").textContent = money(total);
+  const count = lines.reduce((s, [, q]) => s + q, 0);
+  const showBar = count > 0 && !$("shopView").hidden && !$("customer").hidden;
+  $("cartbar").classList.toggle("show", showBar);
+  document.body.classList.toggle("has-bar", showBar);
+  $("cartbarBtn").textContent = `View order (${count}) · ${money(total)}`;
+  saveCart();
+}
+
+$("chips").addEventListener("click", e => {
+  const b = e.target.closest("[data-cat]"); if (!b) return;
+  catFilter = b.dataset.cat; renderShop();
+});
+$("menuList").addEventListener("click", e => {
+  const inc = e.target.closest("[data-inc]"), dec = e.target.closest("[data-dec]");
+  if (inc) cart[inc.dataset.inc] = (cart[inc.dataset.inc] || 0) + 1;
+  else if (dec) { const id = dec.dataset.dec; cart[id] = (cart[id] || 0) - 1; if (cart[id] <= 0) delete cart[id]; }
+  else return;
+  renderShop();
+});
+$("cartbarBtn").addEventListener("click", () => $("cart").scrollIntoView({ behavior: "smooth" }));
+
+$("cName").value = store.get("cName") || "";
+$("cPhone").value = store.get("cPhone") || "";
+
+$("checkout").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("checkoutErr"); err.hidden = true;
+  const name = $("cName").value.trim(), phone = $("cPhone").value.trim(), note = $("cNote").value.trim();
+  const items = Object.entries(cart).filter(([id]) => menu[id])
+    .map(([id, qty]) => ({ id, name: menu[id].name, price: Number(menu[id].price), qty }));
+  if (!items.length) { err.textContent = "Your order is empty. Add at least one item."; err.hidden = false; return; }
+  if (!name || !phone) { err.textContent = "Enter your name and phone number so we can reach you."; err.hidden = false; return; }
+
+  const btn = $("placeBtn"); btn.disabled = true; btn.textContent = "Placing order…";
+  try {
+    const counter = await db.ref("meta/orderCounter").transaction(n => (n || 100) + 1);
+    const number = counter.snapshot.val();
+    const ref = db.ref("orders").push();
+    const now = new Date();
+    await ref.set({
+      number, customerName: name, phone, note, items,
+      total: Number(items.reduce((s, i) => s + i.price * i.qty, 0).toFixed(dec())),
+      status: "new", createdAt: TS,
+      orderDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+      orderTime: `${pad(now.getHours())}:${pad(now.getMinutes())}`
+    });
+    store.set("cName", name); store.set("cPhone", phone);
+    cart = {}; saveCart(); $("cNote").value = "";
+    store.set("myOrder", ref.key);
+    showTracker(ref.key);
+  } catch (ex) {
+    err.textContent = "The order could not be sent: " + ex.message + ". Check your connection and try again.";
+    err.hidden = false;
+  } finally {
+    btn.disabled = false; btn.textContent = "Place order";
+  }
+});
+
+/* ---------- order tracker ---------- */
+const STEPS = [["new", "Order received"], ["preparing", "Being prepared"], ["ready", "Ready for pickup"], ["done", "Completed"]];
+let trackRef = null;
+function showTracker(id) {
+  $("shopView").hidden = true; $("trackView").hidden = false; renderCart();
+  if (trackRef) trackRef.off();
+  trackRef = db.ref("orders/" + id);
+  trackRef.on("value", s => {
+    const o = s.val();
+    if (!o) { closeTracker(); return; }
+    $("tNum").textContent = "#" + o.number;
+    $("tSummary").textContent = `${(o.items || []).reduce((n, i) => n + i.qty, 0)} items · ${money(o.total)} · placed ${dateTimeOf(o.createdAt)}`;
+    const idx = STEPS.findIndex(([k]) => k === o.status);
+    $("tSteps").innerHTML = STEPS.map(([k, label], i) =>
+      `<li class="${i < idx || o.status === "done" ? "done" : i === idx ? "now" : ""}"><b></b><span>${label}</span></li>`).join("");
+    $("tCancelled").hidden = o.status !== "cancelled";
+  });
+}
+function closeTracker() {
+  if (trackRef) { trackRef.off(); trackRef = null; }
+  store.set("myOrder", null);
+  $("trackView").hidden = true; $("shopView").hidden = false; renderShop();
+}
+$("newOrderBtn").addEventListener("click", closeTracker);
+
+/* =================================================================
+   STAFF
+   ================================================================= */
+let unlocked = false;   // never remembered: PIN is required every time the staff page opens
+try { sessionStorage.removeItem("staffOk"); } catch {}
+
+function updateGate() {
+  const needSetup = !!settings && !settings.staffPin;
+  $("pinForm").hidden = needSetup; $("setupForm").hidden = !needSetup;
+  $("gateTitle").textContent = needSetup ? "Create a staff PIN" : "Staff sign-in";
+}
+
+$("pinForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const err = $("pinErr");
+  if (!settings) { err.textContent = "Still connecting to the database. Try again in a moment."; err.hidden = false; return; }
+  if ($("pin").value === String(settings.staffPin)) {
+    unlocked = true;
+    $("pin").value = ""; err.hidden = true; openPanel();
+  } else { err.textContent = "That PIN is not correct."; err.hidden = false; }
+});
+
+$("setupForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("setupErr"); err.hidden = true;
+  const p1 = $("newPin1").value.trim(), p2 = $("newPin2").value.trim();
+  if (p1.length < 4) { err.textContent = "Use at least 4 characters."; err.hidden = false; return; }
+  if (p1 !== p2) { err.textContent = "The two PINs don't match."; err.hidden = false; return; }
+  try {
+    await db.ref("settings").update({
+      staffPin: p1,
+      shopName: (settings && settings.shopName) || "NFC - Beyond",
+      currency: cur(), decimals: dec()
+    });
+    $("newPin1").value = ""; $("newPin2").value = "";
+    unlocked = true; openPanel(); toast("Staff PIN saved");
+  } catch (ex) { err.textContent = "Could not save: " + ex.message; err.hidden = false; }
+});
+
+function fillSettingsForm() {
+  if (!settings || $("tab-settings").contains(document.activeElement)) return;
+  $("sName").value = settings.shopName || "NFC - Beyond";
+  $("sCurrency").value = cur();
+  $("sDecimals").value = String(dec());
+}
+$("settingsForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("settingsErr"); err.hidden = true;
+  const upd = {
+    shopName: $("sName").value.trim() || "NFC - Beyond",
+    currency: $("sCurrency").value.trim().toUpperCase() || "KWD",
+    decimals: parseInt($("sDecimals").value, 10)
+  };
+  const p1 = $("sPin1").value.trim(), p2 = $("sPin2").value.trim();
+  if (p1 || p2) {
+    if (p1.length < 4) { err.textContent = "The new PIN needs at least 4 characters."; err.hidden = false; return; }
+    if (p1 !== p2) { err.textContent = "The two new PINs don't match."; err.hidden = false; return; }
+    upd.staffPin = p1;
+  }
+  try {
+    await db.ref("settings").update(upd);
+    $("sPin1").value = ""; $("sPin2").value = "";
+    document.activeElement && document.activeElement.blur(); fillSettingsForm();
+    toast(upd.staffPin ? "Settings and PIN saved" : "Settings saved");
+  } catch (ex) { err.textContent = "Could not save: " + ex.message; err.hidden = false; }
+});
+
+let ordersStarted = false, orders = {}, seen = null, orderFilter = "active";
+function lockStaff() {
+  unlocked = false;
+  if (ordersStarted) { db.ref("orders").off(); ordersStarted = false; seen = null; orders = {}; }
+  $("board").innerHTML = "";
+  resetForm();
+  $("panel").hidden = true; $("gate").hidden = false; $("pinErr").hidden = true; $("pin").value = "";
+}
+$("lockBtn").addEventListener("click", () => { lockStaff(); toast("Staff panel locked"); });
+function openPanel() {
+  $("gate").hidden = true; $("panel").hidden = false;
+  if (ordersStarted) return; ordersStarted = true;
+  db.ref("orders").orderByChild("createdAt").limitToLast(300).on("value", snap => {
+    orders = snap.val() || {};
+    const ids = Object.keys(orders);
+    const fresh = seen ? ids.filter(id => !seen.has(id) && orders[id].status === "new") : [];
+    seen = new Set(ids);
+    renderBoard(fresh);
+    if (fresh.length) { beep(); toast(`New order #${orders[fresh[0]].number}`); }
+  }, err => { $("board").innerHTML = `<p class="err">Could not read orders: ${esc(err.message)}</p>`; });
+}
+
+const NEXT = { new: ["preparing", "Start preparing"], preparing: ["ready", "Mark ready"], ready: ["done", "Picked up"] };
+function renderBoard(fresh = []) {
+  const all = Object.entries(orders).map(([id, o]) => ({ id, ...o })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const active = all.filter(o => ["new", "preparing", "ready"].includes(o.status));
+  $("activeCount").textContent = active.length;
+  const list = orderFilter === "all" ? all : orderFilter === "ready" ? all.filter(o => o.status === "ready") : active;
+  if (orderFilter === "active") list.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); // oldest first in the queue
+
+  $("board").innerHTML = list.length ? list.map(o => {
+    const nx = NEXT[o.status];
+    return `<article class="ticket ${fresh.includes(o.id) ? "fresh" : ""}"><div class="in">
+      <div class="ohead"><span class="onum">#${esc(o.number)}</span><span class="pill s-${esc(o.status)}">${esc(o.status)}</span></div>
+      <div class="meta"><strong style="color:var(--ink)">${dateTimeOf(o.createdAt)}</strong></div>
+      <div class="meta">${esc(o.customerName)} · ${esc(o.phone)}</div>
+      <ul class="lines">${(o.items || []).map(i => `<li><span class="q">${esc(i.qty)}×</span><span class="n">${esc(i.name)}</span><span class="price">${money(i.price * i.qty)}</span></li>`).join("")}</ul>
+      ${o.note ? `<div class="note">${esc(o.note)}</div>` : ""}
+      <div class="perf"></div>
+      <div class="total"><span>Total</span><span class="price">${money(o.total)}</span></div>
+      <div class="actions">
+        ${nx ? `<button type="button" class="btn small primary" data-set="${o.id}" data-status="${nx[0]}">${nx[1]}</button>` : ""}
+        ${["new", "preparing"].includes(o.status) ? `<button type="button" class="btn small danger" data-set="${o.id}" data-status="cancelled">Cancel</button>` : ""}
+        ${["done", "cancelled"].includes(o.status) ? `<button type="button" class="btn small" data-set="${o.id}" data-status="new">Reopen</button>` : ""}
+      </div>
+    </div></article>`;
+  }).join("") : `<p class="empty">${orderFilter === "active" ? "No active orders. New orders appear here automatically." : "No orders here yet."}</p>`;
+}
+
+$("board").addEventListener("click", e => {
+  const b = e.target.closest("[data-set]"); if (!b) return;
+  if (b.dataset.status === "cancelled" && !b.dataset.sure) {
+    b.dataset.sure = "1"; b.textContent = "Confirm cancel";
+    setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = "Cancel"; } }, 3000);
+    return;
+  }
+  db.ref("orders/" + b.dataset.set).update({ status: b.dataset.status, updatedAt: TS })
+    .catch(ex => toast("Update failed: " + ex.message));
+});
+document.querySelectorAll("[data-of]").forEach(c => c.addEventListener("click", () => {
+  document.querySelectorAll("[data-of]").forEach(x => x.classList.toggle("on", x === c));
+  orderFilter = c.dataset.of; renderBoard();
+}));
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === t));
+  ["orders", "menu", "settings"].forEach(n => $("tab-" + n).hidden = t.dataset.tab !== n);
+  if (t.dataset.tab === "settings") fillSettingsForm();
+}));
+
+let audioCtx;
+function beep() {
+  if (!$("soundOn").checked) return;
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.18].forEach(d => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.2, audioCtx.currentTime + d);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d + 0.15);
+      o.start(audioCtx.currentTime + d); o.stop(audioCtx.currentTime + d + 0.16);
+    });
+  } catch {}
+}
+
+/* ---------- menu admin ---------- */
+let editingId = null;
+function renderAdmin() {
+  const items = sortedItems();
+  $("catList").innerHTML = [...new Set(items.map(i => i.category).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
+  $("adminRows").innerHTML = items.length ? items.map(i => `<tr>
+      <td>${safeImg(i.image) ? `<img class="thumb" src="${esc(i.image)}" alt="">` : `<span class="thumb none">No photo</span>`}</td>
+      <td class="${i.available === false ? "off" : ""}"><strong>${esc(i.name)}</strong></td>
+      <td>${esc(i.category || "—")}</td>
+      <td class="price">${money(i.price)}</td>
+      <td><button type="button" class="pill ${i.available === false ? "s-cancelled" : "s-ready"}" style="border:0" data-toggle="${i.id}" title="Click to switch">${i.available === false ? "Hidden" : "On menu"}</button></td>
+      <td><div class="actions" style="flex-wrap:nowrap">
+        <button type="button" class="btn small" data-edit="${i.id}">Edit</button>
+        <button type="button" class="btn small danger" data-del="${i.id}">Delete</button>
+      </div></td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty">No menu items yet. Add your first item with the form.</td></tr>`;
+}
+
+/* ---------- item photos ---------- */
+// Photos are shrunk to max 640px JPEG (~50 KB) and stored with the item in the database.
+let formImage = "";
+function safeImg(src) { return typeof src === "string" && (/^data:image\//.test(src) || /^https?:\/\//.test(src)); }
+function setFormImage(src) {
+  formImage = src || "";
+  const has = !!formImage;
+  $("photoPreview").hidden = !has; if (has) $("photoPreview").src = formImage; else $("photoPreview").removeAttribute("src");
+  $("photoDrop").hidden = has; $("photoActions").hidden = !has;
+  if (!/^https?:\/\//.test(formImage)) $("iPhotoUrl").value = "";
+}
+function resizeImage(file, max = 640, quality = 0.78) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file isn't an image this browser can read.")); };
+    img.src = url;
+  });
+}
+async function takePhoto(file) {
+  if (!file) return;
+  if (!file.type.startsWith("image/")) { $("itemErr").textContent = "Choose an image file (JPG, PNG, WebP)."; $("itemErr").hidden = false; return; }
+  try { $("itemErr").hidden = true; setFormImage(await resizeImage(file)); }
+  catch (ex) { $("itemErr").textContent = ex.message; $("itemErr").hidden = false; }
+}
+$("iPhoto").addEventListener("change", e => { takePhoto(e.target.files[0]); e.target.value = ""; });
+$("removePhotoBtn").addEventListener("click", () => setFormImage(""));
+$("iPhotoUrl").addEventListener("change", e => {
+  const v = e.target.value.trim();
+  if (!v) { if (/^https?:\/\//.test(formImage)) setFormImage(""); return; }
+  if (/^https?:\/\//.test(v)) { setFormImage(v); $("iPhotoUrl").value = v; }
+  else { $("itemErr").textContent = "Image links must start with https://"; $("itemErr").hidden = false; }
+});
+["dragenter", "dragover"].forEach(ev => $("photoDrop").addEventListener(ev, e => { e.preventDefault(); $("photoDrop").classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => $("photoDrop").addEventListener(ev, e => { e.preventDefault(); $("photoDrop").classList.remove("over"); }));
+$("photoDrop").addEventListener("drop", e => takePhoto(e.dataTransfer.files[0]));
+
+function resetForm() {
+  editingId = null; $("itemForm").reset(); $("iAvail").checked = true; setFormImage("");
+  $("formTitle").textContent = "Add item"; $("saveItemBtn").textContent = "Add item";
+  $("cancelEditBtn").hidden = true; $("itemErr").hidden = true;
+}
+$("cancelEditBtn").addEventListener("click", resetForm);
+
+$("itemForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("itemErr"); err.hidden = true;
+  const name = $("iName").value.trim(), price = parseFloat($("iPrice").value);
+  if (!name) { err.textContent = "Give the item a name."; err.hidden = false; return; }
+  if (!(price >= 0)) { err.textContent = "Enter a price of 0 or more."; err.hidden = false; return; }
+  const data = {
+    name, price: Number(price.toFixed(dec())),
+    category: $("iCat").value.trim() || "Other",
+    description: $("iDesc").value.trim(),
+    available: $("iAvail").checked, updatedAt: TS,
+    image: formImage || null
+  };
+  try {
+    if (editingId) { await db.ref("menu/" + editingId).update(data); toast("Item updated"); }
+    else { await db.ref("menu").push({ ...data, createdAt: TS }); toast("Item added"); }
+    resetForm();
+  } catch (ex) { err.textContent = "Could not save: " + ex.message; err.hidden = false; }
+});
+
+$("adminRows").addEventListener("click", e => {
+  const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]"), tg = e.target.closest("[data-toggle]");
+  if (ed) {
+    const i = menu[ed.dataset.edit]; editingId = ed.dataset.edit;
+    $("iName").value = i.name || ""; $("iCat").value = i.category || ""; $("iPrice").value = i.price ?? "";
+    $("iDesc").value = i.description || ""; $("iAvail").checked = i.available !== false;
+    setFormImage(safeImg(i.image) ? i.image : "");
+    if (/^https?:\/\//.test(formImage)) $("iPhotoUrl").value = formImage;
+    $("formTitle").textContent = "Edit item"; $("saveItemBtn").textContent = "Save changes"; $("cancelEditBtn").hidden = false;
+    $("iName").focus();
+  } else if (del) {
+    if (!del.dataset.sure) {
+      del.dataset.sure = "1"; del.textContent = "Confirm";
+      setTimeout(() => { if (del.isConnected) { delete del.dataset.sure; del.textContent = "Delete"; } }, 3000);
+      return;
+    }
+    db.ref("menu/" + del.dataset.del).remove().then(() => { toast("Item deleted"); if (editingId === del.dataset.del) resetForm(); });
+  } else if (tg) {
+    db.ref("menu/" + tg.dataset.toggle).update({ available: menu[tg.dataset.toggle].available === false, updatedAt: TS });
+  }
+});
+
+/* =================================================================
+   ROUTING  (#staff = staff panel, anything else = customer)
+   ================================================================= */
+function route() {
+  const staff = location.hash === "#staff";
+  $("customer").hidden = staff; $("staff").hidden = !staff;
+  $("viewLabel").textContent = staff ? "Staff panel" : "Order online";
+  if (staff && unlocked) openPanel();
+  if (!staff && unlocked) lockStaff();   // leaving the staff page locks it again
+  if (staff && !unlocked) setTimeout(() => $("pin").focus(), 0);
+  renderCart();
+}
+window.addEventListener("hashchange", route);
+$("toCustomer").addEventListener("click", e => { e.preventDefault(); history.pushState("", "", location.pathname); route(); });
+
+const savedOrder = store.get("myOrder");
+if (savedOrder) showTracker(savedOrder);
+route();
+</script>
+</body>
+</html>
