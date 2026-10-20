@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NFC - Beyond</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: menu column + sticky order ticket on the right; staff view uses kitchen-ticket cards in a wrapping grid */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #16213a;
+  --muted: #5c6680;
+  --line: #dde1ea;
+  --accent: #f2b619;      /* ticket yellow */
+  --accent-ink: #1a1405;
+  --brand: #1f3a8a;       /* counter navy */
+  --ok: #1d8a4e; --warn: #c27a00; --bad: #c0392b; --info: #2563eb;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1422; --surface: #171e30; --ink: #e8ecf5; --muted: #9aa3ba; --line: #2a3350;
+    --accent: #f5c43d; --accent-ink: #1a1405; --brand: #8fb0ff;
+    --ok: #4cc98a; --warn: #f0a93a; --bad: #ff7b6b; --info: #7aa7ff;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.15; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+[hidden] { display: none !important; }
+
+/* Header */
+header.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-block: 18px 14px; border-bottom: 2px solid var(--ink); margin-bottom: 20px;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+.brand small { font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.conn { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.conn i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); display: inline-block; }
+.conn.on i { background: var(--ok); }
+
+/* Buttons */
+a.btn { display: inline-block; text-decoration: none; color: inherit; }
+.btn { border: 1.5px solid var(--ink); background: transparent; padding: 8px 14px; border-radius: 999px; font-weight: 600; }
+.btn:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.primary:hover { background: color-mix(in srgb, var(--ink) 85%, var(--brand)); }
+.btn.yellow, a.btn.yellow { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.small { padding: 5px 11px; font-size: 13px; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; font-size: 13px; }
+
+/* Customer layout */
+.shop { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+@media (max-width: 860px) { .shop { grid-template-columns: minmax(0, 1fr); } }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 13px; font-size: 13px; font-weight: 600; }
+.chip.on { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.cat-title { font-size: 13px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 22px 0 10px; }
+.cat-title:first-child { margin-top: 0; }
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.item {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+.item { overflow: hidden; }
+.item .pic { display: block; width: calc(100% + 28px); max-width: none; margin: -14px -14px 4px; aspect-ratio: 4 / 3; object-fit: cover; background: var(--line); }
+.photo-field { display: grid; gap: 8px; }
+.photo-preview { width: 100%; max-width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+.photo-drop { display: grid; place-items: center; text-align: center; aspect-ratio: 4 / 3; border: 2px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 400; padding: 10px; cursor: pointer; }
+.photo-drop:hover, .photo-drop.over { border-color: var(--ink); color: var(--ink); }
+.thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; display: block; background: var(--line); }
+.thumb.none { display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+.item h3 { font-size: 17px; font-weight: 600; }
+.item p { margin: 0; color: var(--muted); font-size: 13.5px; flex: 1; }
+.custom-in { display: grid; gap: 6px; margin-top: 4px; }
+.custom-in input { width: 100%; }
+.custom-txt { display: block; font-size: 12.5px; color: var(--muted); font-style: italic; overflow-wrap: anywhere; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--ink); margin-left: 6px; vertical-align: middle; }
+.cpic-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cpic-thumb { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid var(--line); }
+.line-pic { width: 34px; height: 34px; border-radius: 5px; object-fit: cover; display: block; margin-top: 4px; border: 1px solid var(--line); }
+.lightbox { position: fixed; inset: 0; z-index: 30; background: color-mix(in srgb, #000 75%, transparent); display: grid; place-items: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.lightbox .box { background: var(--surface); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; max-width: min(720px, 100%); max-height: 100%; overflow: auto; }
+.lightbox img { max-width: 100%; max-height: 70vh; border-radius: 6px; display: block; margin: 0 auto; }
+.lines .rm { border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 2px; }
+.lines .rm:hover { color: var(--bad); }
+.item .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.price { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+.stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--ink); border-radius: 999px; overflow: hidden; }
+.stepper button { border: 0; background: transparent; width: 32px; height: 30px; font-weight: 700; font-size: 16px; }
+.stepper button:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.stepper span { min-width: 22px; text-align: center; font-family: var(--mono); font-weight: 700; }
+
+/* Ticket (cart + staff orders) */
+.ticket {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  position: relative; overflow: hidden;
+}
+.ticket::before { content: ""; display: block; height: 8px; background: var(--accent); }
+.ticket .in { padding: 16px; display: grid; gap: 12px; }
+.perf { border-top: 2px dashed var(--line); margin: 0 -16px; }
+.cart { position: sticky; top: 16px; }
+.cart h2 { font-size: 20px; }
+.lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lines li { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px; align-items: baseline; font-size: 14px; }
+.lines .q { font-family: var(--mono); color: var(--muted); }
+.lines .n { overflow-wrap: anywhere; }
+.total { display: flex; justify-content: space-between; font-weight: 700; font-size: 17px; }
+.total .price { font-size: 18px; }
+.empty { color: var(--muted); font-size: 14px; text-align: center; padding: 10px 0; }
+label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+input[type=text], input[type=tel], input[type=number], input[type=password], select, textarea {
+  width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--bg); font-weight: 400;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: none; }
+textarea { resize: vertical; min-height: 60px; }
+.err { color: var(--bad); font-size: 13px; margin: 0; }
+
+/* Mobile cart bar */
+.cartbar {
+  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--ink); color: var(--bg);
+}
+.cartbar button { width: 100%; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 999px; padding: 11px; font-weight: 700; }
+@media (max-width: 860px) { .cartbar.show { display: block; } body.has-bar { padding-bottom: 80px; } .cart { position: static; } }
+
+/* Order tracker */
+.track { max-width: 520px; margin: 10px auto 40px; }
+.track .num { font-family: var(--mono); font-size: 54px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; }
+.steps li { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: center; padding: 8px 0; color: var(--muted); }
+.steps li b { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: inline-block; }
+.steps li.done { color: var(--ink); }
+.steps li.done b { background: var(--ok); border-color: var(--ok); }
+.steps li.now { color: var(--ink); font-weight: 600; }
+.steps li.now b { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* Staff */
+.tabs { display: flex; gap: 6px; border-bottom: 1.5px solid var(--line); margin-bottom: 18px; flex-wrap: wrap; }
+.tab { border: 0; background: none; padding: 10px 14px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1.5px; }
+.tab.on { color: var(--ink); border-bottom-color: var(--accent); }
+.tab .count { font-family: var(--mono); font-size: 12px; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
+.toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
+.board { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; align-items: start; }
+.onum { font-family: var(--mono); font-size: 26px; font-weight: 700; }
+.ohead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.note { font-size: 13px; background: color-mix(in srgb, var(--accent) 18%, transparent); padding: 6px 9px; border-radius: 6px; overflow-wrap: anywhere; }
+.pill { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.s-new { background: color-mix(in srgb, var(--info) 18%, transparent); color: var(--info); }
+.s-preparing { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.s-ready { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); }
+.s-done { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+.s-cancelled { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+.ticket.fresh { animation: pop 1.2s ease-out; }
+@keyframes pop { 0% { box-shadow: 0 0 0 6px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.menu-admin { display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .menu-admin { grid-template-columns: minmax(0,1fr); } }
+.form { display: grid; gap: 12px; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td.off { color: var(--muted); text-decoration: line-through; }
+.gate { max-width: 360px; margin: 40px auto; }
+.captcha { min-height: 78px; max-width: 100%; overflow: hidden; }
+.contact { margin-top: 28px; }
+.contact .in { gap: 10px; }
+.contact-mail { font-family: var(--mono); font-size: 16px; font-weight: 700; overflow-wrap: anywhere; user-select: all; }
+footer { margin: 40px 0 24px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-weight: 600; z-index: 20;
+}
+@media (prefers-reduced-motion: reduce) { .ticket.fresh { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1 id="shopName">NFC - Beyond</h1>
+      <small id="viewLabel">Order online</small>
+    </div>
+    <span class="conn" id="conn"><i></i><span>Connecting…</span></span>
+  </header>
+
+  <!-- ============ CUSTOMER ============ -->
+  <main id="customer">
+    <section id="shopView" class="shop">
+      <div>
+        <div class="chips" id="chips"></div>
+        <div id="menuList"><p class="empty">Loading menu…</p></div>
+      </div>
+      <aside class="cart" id="cart">
+        <div class="ticket"><div class="in">
+          <h2>Your order</h2>
+          <ul class="lines" id="cartLines"></ul>
+          <div class="perf"></div>
+          <div class="total"><span>Total</span><span class="price" id="cartTotal">0</span></div>
+          <form id="checkout" class="form" novalidate>
+            <label for="cName">Name<input type="text" id="cName" autocomplete="name" required></label>
+            <label for="cPhone">Phone<input type="tel" id="cPhone" autocomplete="tel" required></label>
+            <label for="cEmail">Email <span style="font-weight:400;color:var(--muted)">(we'll email your order confirmation)</span><input type="email" id="cEmail" autocomplete="email" required></label>
+            <label for="cNote">Notes (optional)<textarea id="cNote"></textarea></label>
+            <div class="captcha" id="captchaWrap" hidden><div id="captchaBox"></div></div>
+            <p class="err" id="checkoutErr" hidden></p>
+            <button class="btn yellow" type="submit" id="placeBtn">Place order</button>
+          </form>
+        </div></div>
+      </aside>
+    </section>
+
+    <section id="trackView" class="track" hidden>
+      <div class="ticket"><div class="in">
+        <span class="meta">Your order number</span>
+        <div class="num" id="tNum">#—</div>
+        <p class="meta" id="tSummary"></p>
+        <div class="perf"></div>
+        <ol class="steps" id="tSteps"></ol>
+        <p class="err" id="tCancelled" hidden>This order was cancelled. Please contact the shop.</p>
+        <div class="perf"></div>
+        <button class="btn" id="newOrderBtn" type="button">Start a new order</button>
+      </div></div>
+    </section>
+  </main>
+
+  <div class="cartbar" id="cartbar"><button type="button" id="cartbarBtn">View order</button></div>
+
+  <!-- ============ STAFF ============ -->
+  <main id="staff" hidden>
+    <section id="gate" class="gate">
+      <div class="ticket"><div class="in">
+        <h2 id="gateTitle">Staff sign-in</h2>
+        <form id="pinForm" class="form">
+          <label for="pin">Staff PIN<input type="password" id="pin" inputmode="numeric" autocomplete="off"></label>
+          <p class="err" id="pinErr" hidden>That PIN is not correct.</p>
+          <button class="btn primary" type="submit">Open staff panel</button>
+        </form>
+        <form id="setupForm" class="form" hidden>
+          <p class="meta" style="margin:0">No staff PIN is saved in the database yet. Create one now; you'll need it every time you open the staff panel.</p>
+          <label for="newPin1">New PIN<input type="password" id="newPin1" inputmode="numeric" autocomplete="new-password"></label>
+          <label for="newPin2">Repeat PIN<input type="password" id="newPin2" inputmode="numeric" autocomplete="new-password"></label>
+          <p class="err" id="setupErr" hidden></p>
+          <button class="btn primary" type="submit">Save PIN and open panel</button>
+        </form>
+      </div></div>
+    </section>
+
+    <section id="panel" hidden>
+      <nav class="tabs">
+        <button class="tab on" data-tab="orders" type="button">Orders <span class="count" id="activeCount">0</span></button>
+        <button class="tab" data-tab="menu" type="button">Menu items</button>
+        <button class="tab" data-tab="settings" type="button">Settings</button>
+        <button class="btn small" id="lockBtn" type="button" style="margin-left:auto;align-self:center">Lock</button>
+      </nav>
+
+      <div id="tab-orders">
+        <div class="toolbar">
+          <div class="chips" style="margin:0">
+            <button class="chip on" data-of="active" type="button">Active</button>
+            <button class="chip" data-of="ready" type="button">Ready</button>
+            <button class="chip" data-of="all" type="button">All</button>
+          </div>
+          <label class="check" for="soundOn"><input type="checkbox" id="soundOn" checked> Sound on new order</label>
+        </div>
+        <div class="board" id="board"></div>
+      </div>
+
+      <div id="tab-menu" hidden>
+        <div class="menu-admin">
+          <div class="ticket"><div class="in">
+            <h2 id="formTitle">Add item</h2>
+            <form id="itemForm" class="form" novalidate>
+              <label for="iName">Name<input type="text" id="iName" required></label>
+              <label for="iCat">Category<input type="text" id="iCat" list="catList" placeholder="e.g. Burgers"></label>
+              <datalist id="catList"></datalist>
+              <label for="iPrice">Price<input type="number" id="iPrice" min="0" step="0.001" required></label>
+              <label for="iDesc">Description<textarea id="iDesc"></textarea></label>
+              <div class="photo-field">
+                <span style="font-size:13px;font-weight:600">Photo (optional)</span>
+                <label class="photo-drop" id="photoDrop" for="iPhoto">Click to choose a photo, or drag one here</label>
+                <input type="file" id="iPhoto" accept="image/*" hidden>
+                <img class="photo-preview" id="photoPreview" alt="Photo preview" hidden>
+                <div class="actions" id="photoActions" hidden>
+                  <label class="btn small" for="iPhoto" style="display:inline-block">Change photo</label>
+                  <button class="btn small danger" type="button" id="removePhotoBtn">Remove photo</button>
+                </div>
+                <label for="iPhotoUrl" style="font-weight:400;color:var(--muted)">…or paste an image link
+                  <input type="text" id="iPhotoUrl" placeholder="https://…" inputmode="url">
+                </label>
+              </div>
+              <label class="check" for="iAvail"><input type="checkbox" id="iAvail" checked> Available to order</label>
+              <label class="check" for="iCustom"><input type="checkbox" id="iCustom"> Customer can personalize this item (text and/or photo)</label>
+              <label for="iCustomLabel" id="iCustomLabelWrap" hidden>What should the customer write?
+                <input type="text" id="iCustomLabel" placeholder="e.g. Name or text to print">
+              </label>
+              <label for="iPhotoMode" id="iPhotoModeWrap" hidden>Customer photo
+                <select id="iPhotoMode">
+                  <option value="optional">Optional: customer can add a photo</option>
+                  <option value="required">Required: customer must add a photo</option>
+                  <option value="off">Text only: don't ask for a photo</option>
+                  <option value="only">Photo only: customer must add a photo, no text box</option>
+                </select>
+              </label>
+              <p class="err" id="itemErr" hidden></p>
+              <div class="actions">
+                <button class="btn primary" type="submit" id="saveItemBtn">Add item</button>
+                <button class="btn" type="button" id="cancelEditBtn" hidden>Cancel edit</button>
+              </div>
+            </form>
+          </div></div>
+          <div>
+            <div class="toolbar">
+              <h2 style="font-size:20px">Current menu</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th></th><th>Item</th><th>Category</th><th>Price</th><th>Status</th><th></th></tr></thead>
+                <tbody id="adminRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-settings" hidden>
+        <div class="ticket" style="max-width:460px"><div class="in">
+          <h2>Shop settings</h2>
+          <p class="meta" style="margin:0">Saved in the database. Changes show on every customer's page right away.</p>
+          <form id="settingsForm" class="form" novalidate>
+            <label for="sName">Shop name<input type="text" id="sName"></label>
+            <label for="sCurrency">Currency<input type="text" id="sCurrency" placeholder="KWD"></label>
+            <label for="sDecimals">Decimal places
+              <select id="sDecimals"><option value="3">3 (1.750)</option><option value="2">2 (1.75)</option><option value="0">0 (2)</option></select>
+            </label>
+            <div class="perf"></div>
+            <label for="sContact">Contact email (shown under "Contact")<input type="email" id="sContact" placeholder="nfc.beyond.kw@gmail.com"></label>
+            <label for="sCaptcha">reCAPTCHA site key <span style="font-weight:400;color:var(--muted)">("I'm not a robot" check; leave empty to turn it off)</span><input type="text" id="sCaptcha" placeholder="6Lxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off"></label>
+            <div class="perf"></div>
+            <h3 style="font-size:16px">Customer emails</h3>
+            <p class="meta" style="margin:0">Sent automatically with your free EmailJS account: a confirmation when the order is placed, and a cancellation email when staff cancel an order.</p>
+            <label for="sTitle">Email title (subject)<input type="text" id="sTitle" placeholder="NFC-Beyond Store"></label>
+            <label for="sSvc">EmailJS Service ID<input type="text" id="sSvc" placeholder="service_xxxxxxx" autocomplete="off"></label>
+            <label for="sKey">EmailJS Public Key<input type="text" id="sKey" placeholder="xxxxxxxxxxxxxxx" autocomplete="off"></label>
+            <label for="sTpl">Confirmation template ID <span style="font-weight:400;color:var(--muted)">(order received)</span><input type="text" id="sTpl" placeholder="template_xxxxxxx" autocomplete="off"></label>
+            <label for="sCancelTpl">Cancellation template ID <span style="font-weight:400;color:var(--muted)">(order cancelled)</span><input type="text" id="sCancelTpl" placeholder="template_xxxxxxx" autocomplete="off"></label>
+            <div class="perf"></div>
+            <label for="sPin1">New staff PIN <span style="font-weight:400;color:var(--muted)">(leave empty to keep the current one)</span><input type="password" id="sPin1" inputmode="numeric" autocomplete="new-password"></label>
+            <label for="sPin2">Repeat new PIN<input type="password" id="sPin2" inputmode="numeric" autocomplete="new-password"></label>
+            <p class="err" id="settingsErr" hidden></p>
+            <button class="btn primary" type="submit">Save settings</button>
+          </form>
+        </div></div>
+      </div>
+    </section>
+  </main>
+
+  <section class="contact" id="contactBox" hidden>
+    <div class="ticket" style="max-width:460px"><div class="in">
+      <h2 style="font-size:20px">Contact us</h2>
+      <p class="meta" style="margin:0">Questions about an order? Email us and include your order number.</p>
+      <div class="contact-mail" id="contactEmail">nfc.beyond.kw@gmail.com</div>
+      <div class="actions">
+        <button class="btn small primary" type="button" id="copyEmailBtn">Copy email</button>
+        <a class="btn small" id="mailtoLink" href="mailto:nfc.beyond.kw@gmail.com">Open email app</a>
+        <button class="btn small" type="button" id="closeContactBtn">Close</button>
+      </div>
+    </div></div>
+  </section>
+
+  <footer>
+    <span>Orders update live.</span>
+    <span><a href="#" id="toCustomer" class="link">Customer page</a> · <a href="#staff" class="link">Staff</a> · <a href="#" id="contactLink" class="link">Contact</a></span>
+  </footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div class="lightbox" id="lightbox" hidden>
+  <div class="box">
+    <strong id="lbTitle">Customer photo</strong>
+    <img id="lbImg" alt="Customer photo">
+    <div class="actions">
+      <a class="btn small primary" id="lbDownload" download="photo.jpg" href="#">Download photo</a>
+      <button class="btn small" type="button" id="lbClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase (compat build) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<!-- EmailJS (sends the "ready for pickup" email) -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@5.0.3/dist/email.min.js"></script>
+<!-- Google reCAPTCHA v2 ("I'm not a robot"); the site key is read from the database -->
+<script>window.onRecaptchaLoad = () => window.renderCaptcha && window.renderCaptcha();</script>
+<script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
+<script>
+/* The only thing stored in this file is the database address.
+   Shop name, currency, staff PIN, menu and orders all live in the database
+   (settings → /settings, menu → /menu, orders → /orders). */
+const DATABASE_URL = "https://test-3bdca-default-rtdb.firebaseio.com";
+
+firebase.initializeApp({ databaseURL: DATABASE_URL });
+const db = firebase.database();
+const TS = firebase.database.ServerValue.TIMESTAMP;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+let settings = null;   // filled from /settings in the database
+const dec = () => (settings && Number.isInteger(Number(settings.decimals)) && settings.decimals !== "" && settings.decimals != null) ? Number(settings.decimals) : 3;
+const cur = () => (settings && settings.currency) || "KWD";
+const money = n => (Number(n) || 0).toFixed(dec()) + " " + cur();
+const dateTimeOf = ts => ts ? new Date(ts).toLocaleString([], { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+const pad = n => String(n).padStart(2, "0");
+
+/* ---------- "I'm not a robot" (Google reCAPTCHA v2) ---------- */
+let captchaId = null, captchaKey = "";
+const captchaOn = () => !!(settings && settings.recaptchaSiteKey);
+function renderCaptcha() {
+  const key = (settings && settings.recaptchaSiteKey) || "";
+  $("captchaWrap").hidden = !key;
+  if (!key || !window.grecaptcha || !grecaptcha.render) return;   // script still loading → onload calls us again
+  if (captchaId !== null && key === captchaKey) return;           // already showing the right widget
+  // (re)create the box so a changed key renders cleanly
+  const fresh = document.createElement("div"); fresh.id = "captchaBox";
+  $("captchaBox").replaceWith(fresh);
+  captchaKey = key;
+  try {
+    captchaId = grecaptcha.render(fresh, {
+      sitekey: key,
+      theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+      callback: () => { $("checkoutErr").hidden = true; }
+    });
+  } catch (ex) { captchaId = null; console.warn("reCAPTCHA:", ex); }
+}
+window.renderCaptcha = renderCaptcha;
+function captchaPassed() {
+  if (!captchaOn()) return true;
+  if (captchaId === null || !window.grecaptcha) return false;
+  return !!grecaptcha.getResponse(captchaId);
+}
+function resetCaptcha() { try { if (captchaId !== null) grecaptcha.reset(captchaId); } catch {} }
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
+};
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2200);
+}
+
+/* ---------- settings from the database ---------- */
+db.ref("settings").on("value", s => {
+  settings = s.val() || {};
+  const name = settings.shopName || "NFC - Beyond";
+  $("shopName").textContent = name; document.title = name;
+  renderShop(); renderAdmin(); if (ordersStarted) renderBoard();
+  updateGate(); fillSettingsForm(); renderContact(); renderCaptcha();
+});
+
+/* ---------- connection status ---------- */
+db.ref(".info/connected").on("value", s => {
+  const on = s.val() === true;
+  $("conn").classList.toggle("on", on);
+  $("conn").lastElementChild.textContent = on ? "Live" : "Offline";
+});
+
+/* ---------- shared menu data ---------- */
+let menu = {};
+db.ref("menu").on("value", snap => {
+  menu = snap.val() || {};
+  renderShop();
+  renderAdmin();
+}, err => {
+  $("menuList").innerHTML = `<p class="err">Could not read the menu: ${esc(err.message)}. Check your database rules.</p>`;
+});
+const sortedItems = () => Object.entries(menu)
+  .map(([id, v]) => ({ id, ...v }))
+  .sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.name || "").localeCompare(b.name || ""));
+
+/* =================================================================
+   CUSTOMER
+   ================================================================= */
+let cart = {};
+try { cart = JSON.parse(store.get("cart") || "{}") || {}; } catch { cart = {}; }
+let catFilter = "All";
+// Photos attached to custom cart lines (cart key → image data), kept apart from the cart itself
+let cartPics = {};
+try { cartPics = JSON.parse(store.get("cartPics") || "{}") || {}; } catch { cartPics = {}; }
+const saveCart = () => {
+  Object.keys(cartPics).forEach(k => { if (!cart[k]) delete cartPics[k]; });
+  store.set("cart", JSON.stringify(cart));
+  try { localStorage.setItem("cartPics", JSON.stringify(cartPics)); } catch {}   // may be too big; photos then live until refresh
+};
+
+const typedCustom = {};   // itemId → text being typed (survives re-renders)
+const typedPics = {};     // itemId → photo chosen but not yet added
+function renderShop() {
+  const items = sortedItems().filter(i => i.available !== false);
+  const cats = [...new Set(items.map(i => i.category || "Other"))];
+  if (catFilter !== "All" && !cats.includes(catFilter)) catFilter = "All";
+
+  $("chips").innerHTML = cats.length > 1
+    ? ["All", ...cats].map(c => `<button type="button" class="chip ${c === catFilter ? "on" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("")
+    : "";
+
+  if (!items.length) {
+    $("menuList").innerHTML = `<p class="empty">No items are available right now. Please check back soon.</p>`;
+  } else {
+    const groups = {};
+    items.forEach(i => (groups[i.category || "Other"] ||= []).push(i));
+    $("menuList").innerHTML = Object.entries(groups)
+      .filter(([c]) => catFilter === "All" || c === catFilter)
+      .map(([c, list]) => `
+        <h2 class="cat-title">${esc(c)}</h2>
+        <div class="items">${list.map(itemCard).join("")}</div>`).join("");
+  }
+  // put back any custom text the customer was typing
+  Object.entries(typedCustom).forEach(([id, v]) => { const el = $("ct-" + id); if (el) el.value = v; });
+  // drop cart lines for items that disappeared or became unavailable
+  Object.keys(cart).forEach(k => { const { id } = parseKey(k); if (!menu[id] || menu[id].available === false) delete cart[k]; });
+  renderCart();
+}
+
+/* Cart keys: "itemId" for normal items, "itemId~<text>" for items with custom text */
+// Custom keys: "itemId~<text>" or, with a photo, "itemId~<text>~<photoTag>"
+const encT = t => encodeURIComponent(t).replace(/~/g, "%7E");
+const cartKey = (id, text, picTag) => (text || picTag) ? id + "~" + encT(text || "") + (picTag ? "~" + picTag : "") : id;
+function parseKey(k) {
+  const p = k.split("~");
+  return { id: p[0], text: p[1] ? decodeURIComponent(p[1]) : "", pic: p[2] || "" };
+}
+const cartLines = () => Object.entries(cart).map(([k, q]) => ({ key: k, q, ...parseKey(k), image: cartPics[k] || "" })).filter(l => menu[l.id]);
+
+function itemCard(i) {
+  if (i.custom) {
+    const inCart = cartLines().filter(l => l.id === i.id).reduce((s, l) => s + l.q, 0);
+    return `<article class="item">
+    ${safeImg(i.image) ? `<img class="pic" src="${esc(i.image)}" alt="${esc(i.name)}" loading="lazy">` : ""}
+    <h3>${esc(i.name)}</h3>
+    <p>${esc(i.description || "")}</p>
+    <div class="custom-in">
+      ${i.photoMode === "only" ? "" : `<label for="ct-${i.id}" style="font-weight:600;font-size:13px">${esc(i.customLabel || "Your custom text")}</label>
+      <input type="text" id="ct-${i.id}" data-ctext="${i.id}" maxlength="200" autocomplete="off">`}
+      ${(i.photoMode || "optional") === "off" ? "" : `<div class="cpic-row">
+        ${typedPics[i.id]
+          ? `<img class="cpic-thumb" src="${typedPics[i.id]}" alt="Your photo"><button type="button" class="btn small" data-cpicrm="${i.id}">Remove photo</button>`
+          : `<label class="btn small${["required", "only"].includes(i.photoMode) ? " yellow" : ""}" for="cp-${i.id}" style="font-weight:600">Add photo <span style="font-weight:400">(${["required", "only"].includes(i.photoMode) ? "required" : "optional"})</span></label>`}
+        <input type="file" id="cp-${i.id}" data-cpic="${i.id}" accept="image/*" hidden>
+      </div>`}
+    </div>
+    <div class="row"><span class="price">${money(i.price)}</span>
+      <span style="display:flex;align-items:center;gap:8px">${inCart ? `<span class="meta">${inCart} in order</span>` : ""}
+      <button type="button" class="btn small primary" data-addcustom="${i.id}">Add</button></span></div>
+  </article>`;
+  }
+  const q = cart[i.id] || 0;
+  const control = q
+    ? `<span class="stepper"><button type="button" data-dec="${i.id}" aria-label="Remove one">−</button><span>${q}</span><button type="button" data-inc="${i.id}" aria-label="Add one">+</button></span>`
+    : `<button type="button" class="btn small primary" data-inc="${i.id}">Add</button>`;
+  return `<article class="item">
+    ${safeImg(i.image) ? `<img class="pic" src="${esc(i.image)}" alt="${esc(i.name)}" loading="lazy">` : ""}
+    <h3>${esc(i.name)}</h3>
+    <p>${esc(i.description || "")}</p>
+    <div class="row"><span class="price">${money(i.price)}</span>${control}</div>
+  </article>`;
+}
+
+function cartTotal() {
+  return cartLines().reduce((s, l) => s + Number(menu[l.id].price) * l.q, 0);
+}
+function renderCart() {
+  const lines = cartLines();
+  $("cartLines").innerHTML = lines.length
+    ? lines.map(l => `<li><span class="q">${l.q}×</span><span class="n">${esc(menu[l.id].name)}${l.text ? `<span class="custom-txt">“${esc(l.text)}”</span>` : ""}${l.image ? `<img class="line-pic" src="${l.image}" alt="Your photo">` : ""}</span><span class="price">${money(menu[l.id].price * l.q)}${(l.text || l.image) ? ` <button type="button" class="rm" data-rm="${esc(l.key)}" aria-label="Remove">×</button>` : ""}</span></li>`).join("")
+    : `<li class="empty" style="display:block">Add items from the menu to start your order.</li>`;
+  const total = cartTotal();
+  $("cartTotal").textContent = money(total);
+  const count = lines.reduce((s, l) => s + l.q, 0);
+  const showBar = count > 0 && !$("shopView").hidden && !$("customer").hidden;
+  $("cartbar").classList.toggle("show", showBar);
+  document.body.classList.toggle("has-bar", showBar);
+  $("cartbarBtn").textContent = `View order (${count}) · ${money(total)}`;
+  saveCart();
+}
+
+$("chips").addEventListener("click", e => {
+  const b = e.target.closest("[data-cat]"); if (!b) return;
+  catFilter = b.dataset.cat; renderShop();
+});
+$("menuList").addEventListener("input", e => {
+  const t = e.target.closest("[data-ctext]"); if (t) typedCustom[t.dataset.ctext] = t.value;
+});
+$("menuList").addEventListener("change", async e => {
+  const f = e.target.closest("[data-cpic]"); if (!f) return;
+  const id = f.dataset.cpic, file = f.files && f.files[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) { toast("Choose an image file (JPG, PNG or HEIC from your phone)."); return; }
+  try { typedPics[id] = await resizeImage(file, 1600, 0.85); renderShop(); }
+  catch (ex) { toast(ex.message); }
+});
+$("menuList").addEventListener("keydown", e => {
+  const t = e.target.closest("[data-ctext]");
+  if (t && e.key === "Enter") { e.preventDefault(); addCustom(t.dataset.ctext); }
+});
+function addCustom(id) {
+  const el = $("ct-" + id), text = (el ? el.value : "").trim(), pic = typedPics[id] || "";
+  const mode = menu[id].photoMode || "optional", what = (menu[id].customLabel || "custom text").toLowerCase();
+  if ((mode === "required" || mode === "only") && !pic) { toast("This item needs a photo. Tap \"Add photo\" first."); return; }
+  if (mode === "off" && !text) { toast(`Type your ${what} first`); if (el) el.focus(); return; }
+  if (mode === "optional" && !text && !pic) { toast(`Type your ${what} or add a photo first`); if (el) el.focus(); return; }
+  const tag = pic ? "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : "";
+  const k = cartKey(id, text, tag);
+  cart[k] = (cart[k] || 0) + 1;
+  if (pic) cartPics[k] = pic;
+  delete typedCustom[id]; delete typedPics[id];
+  renderShop();
+  toast("Added to your order");
+}
+$("cartLines").addEventListener("click", e => {
+  const r = e.target.closest("[data-rm]"); if (!r) return;
+  delete cart[r.dataset.rm]; renderShop();
+});
+$("menuList").addEventListener("click", e => {
+  const ac = e.target.closest("[data-addcustom]"); if (ac) { addCustom(ac.dataset.addcustom); return; }
+  const pr = e.target.closest("[data-cpicrm]"); if (pr) { delete typedPics[pr.dataset.cpicrm]; renderShop(); return; }
+  const inc = e.target.closest("[data-inc]"), dec = e.target.closest("[data-dec]");
+  if (inc) cart[inc.dataset.inc] = (cart[inc.dataset.inc] || 0) + 1;
+  else if (dec) { const id = dec.dataset.dec; cart[id] = (cart[id] || 0) - 1; if (cart[id] <= 0) delete cart[id]; }
+  else return;
+  renderShop();
+});
+$("cartbarBtn").addEventListener("click", () => $("cart").scrollIntoView({ behavior: "smooth" }));
+
+$("cName").value = store.get("cName") || "";
+$("cPhone").value = store.get("cPhone") || "";
+$("cEmail").value = store.get("cEmail") || "";
+
+$("checkout").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("checkoutErr"); err.hidden = true;
+  const name = $("cName").value.trim(), phone = $("cPhone").value.trim(), note = $("cNote").value.trim();
+  const email = $("cEmail").value.trim();
+  const items = cartLines().map(l => ({
+    id: l.id, name: menu[l.id].name, price: Number(menu[l.id].price), qty: l.q,
+    ...(l.text ? { customText: l.text } : {}),
+    ...(l.image ? { hasPhoto: true } : {})
+  }));
+  const linePhotos = cartLines().map(l => l.image || null);
+  if (!items.length) { err.textContent = "Your order is empty. Add at least one item."; err.hidden = false; return; }
+  if (!name || !phone) { err.textContent = "Enter your name and phone number so we can reach you."; err.hidden = false; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = "Enter a valid email address, like name@example.com, so we can send your order confirmation."; err.hidden = false; return; }
+
+  if (!captchaPassed()) {
+    err.textContent = (captchaOn() && captchaId === null)
+      ? "The \"I'm not a robot\" check didn't load. Refresh the page and try again."
+      : "Tick \"I'm not a robot\" before placing your order.";
+    err.hidden = false; return;
+  }
+
+  const btn = $("placeBtn"); btn.disabled = true; btn.textContent = "Placing order…";
+  try {
+    const counter = await db.ref("meta/orderCounter").transaction(n => (n || 100) + 1);
+    const number = counter.snapshot.val();
+    const ref = db.ref("orders").push();
+    const now = new Date();
+    const orderData = {
+      number, customerName: name, phone, email, note, items,
+      total: Number(items.reduce((s, i) => s + i.price * i.qty, 0).toFixed(dec())),
+      status: "new", createdAt: TS,
+      orderDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+      orderTime: `${pad(now.getHours())}:${pad(now.getMinutes())}`
+    };
+    // order + its photos in one save; photos live under /orderPhotos/<orderId>/<itemIndex>
+    const photos = {};
+    linePhotos.forEach((p, i) => { if (p) photos[i] = p; });
+    const save = { ["orders/" + ref.key]: orderData };
+    if (Object.keys(photos).length) save["orderPhotos/" + ref.key] = photos;
+    await db.ref().update(save);
+    sendOrderEmail(ref.key, orderData, true);   // confirmation email goes out right away
+    store.set("cName", name); store.set("cPhone", phone); store.set("cEmail", email);
+    cart = {}; cartPics = {}; saveCart(); $("cNote").value = ""; resetCaptcha();
+    store.set("myOrder", ref.key);
+    showTracker(ref.key);
+  } catch (ex) {
+    err.textContent = "The order could not be sent: " + ex.message + ". Check your connection and try again.";
+    err.hidden = false;
+  } finally {
+    btn.disabled = false; btn.textContent = "Place order";
+  }
+});
+
+/* ---------- order tracker ---------- */
+const STEPS = [["new", "Order received"], ["preparing", "Being prepared"], ["ready", "Ready for pickup"], ["done", "Completed"]];
+let trackRef = null;
+function showTracker(id) {
+  $("shopView").hidden = true; $("trackView").hidden = false; renderCart();
+  if (trackRef) trackRef.off();
+  trackRef = db.ref("orders/" + id);
+  trackRef.on("value", s => {
+    const o = s.val();
+    if (!o) { closeTracker(); toast("We couldn't find that order."); return; }
+    $("tNum").textContent = "#" + o.number;
+    $("tSummary").textContent = `${(o.items || []).reduce((n, i) => n + i.qty, 0)} items · ${money(o.total)} · placed ${dateTimeOf(o.createdAt)}`;
+    const idx = STEPS.findIndex(([k]) => k === o.status);
+    $("tSteps").innerHTML = STEPS.map(([k, label], i) =>
+      `<li class="${i < idx || o.status === "done" ? "done" : i === idx ? "now" : ""}"><b></b><span>${label}</span></li>`).join("");
+    $("tCancelled").hidden = o.status !== "cancelled";
+  });
+}
+function closeTracker() {
+  if (trackRef) { trackRef.off(); trackRef = null; }
+  store.set("myOrder", null);
+  // drop ?order=… from the address so a refresh shows the menu
+  if (new URLSearchParams(location.search).has("order")) history.replaceState("", "", location.pathname + location.hash);
+  $("trackView").hidden = true; $("shopView").hidden = false; renderShop();
+}
+$("newOrderBtn").addEventListener("click", closeTracker);
+
+/* =================================================================
+   STAFF
+   ================================================================= */
+let unlocked = false;   // never remembered: PIN is required every time the staff page opens
+try { sessionStorage.removeItem("staffOk"); } catch {}
+
+function updateGate() {
+  const needSetup = !!settings && !settings.staffPin;
+  $("pinForm").hidden = needSetup; $("setupForm").hidden = !needSetup;
+  $("gateTitle").textContent = needSetup ? "Create a staff PIN" : "Staff sign-in";
+}
+
+$("pinForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const err = $("pinErr");
+  if (!settings) { err.textContent = "Still connecting to the database. Try again in a moment."; err.hidden = false; return; }
+  if ($("pin").value === String(settings.staffPin)) {
+    unlocked = true;
+    $("pin").value = ""; err.hidden = true; openPanel();
+  } else { err.textContent = "That PIN is not correct."; err.hidden = false; }
+});
+
+$("setupForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("setupErr"); err.hidden = true;
+  const p1 = $("newPin1").value.trim(), p2 = $("newPin2").value.trim();
+  if (p1.length < 4) { err.textContent = "Use at least 4 characters."; err.hidden = false; return; }
+  if (p1 !== p2) { err.textContent = "The two PINs don't match."; err.hidden = false; return; }
+  try {
+    await db.ref("settings").update({
+      staffPin: p1,
+      shopName: (settings && settings.shopName) || "NFC - Beyond",
+      currency: cur(), decimals: dec()
+    });
+    $("newPin1").value = ""; $("newPin2").value = "";
+    unlocked = true; openPanel(); toast("Staff PIN saved");
+  } catch (ex) { err.textContent = "Could not save: " + ex.message; err.hidden = false; }
+});
+
+function fillSettingsForm() {
+  if (!settings || $("tab-settings").contains(document.activeElement)) return;
+  $("sName").value = settings.shopName || "NFC - Beyond";
+  $("sCurrency").value = cur();
+  $("sDecimals").value = String(dec());
+  $("sTitle").value = msgTitle();
+  $("sSvc").value = settings.emailServiceId || "";
+  $("sTpl").value = settings.emailTemplateId || "";
+  $("sKey").value = settings.emailPublicKey || "";
+  $("sCancelTpl").value = settings.emailCancelTemplateId || "";
+  $("sContact").value = contactEmail();
+  $("sCaptcha").value = settings.recaptchaSiteKey || "";
+}
+$("settingsForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("settingsErr"); err.hidden = true;
+  const upd = {
+    shopName: $("sName").value.trim() || "NFC - Beyond",
+    currency: $("sCurrency").value.trim().toUpperCase() || "KWD",
+    decimals: parseInt($("sDecimals").value, 10),
+    messageTitle: $("sTitle").value.trim() || "NFC-Beyond Store",
+    emailServiceId: $("sSvc").value.trim(),
+    emailTemplateId: $("sTpl").value.trim(),
+    emailPublicKey: $("sKey").value.trim(),
+    emailCancelTemplateId: $("sCancelTpl").value.trim(),
+    contactEmail: $("sContact").value.trim() || "nfc.beyond.kw@gmail.com",
+    recaptchaSiteKey: $("sCaptcha").value.trim()
+  };
+  const p1 = $("sPin1").value.trim(), p2 = $("sPin2").value.trim();
+  if (p1 || p2) {
+    if (p1.length < 4) { err.textContent = "The new PIN needs at least 4 characters."; err.hidden = false; return; }
+    if (p1 !== p2) { err.textContent = "The two new PINs don't match."; err.hidden = false; return; }
+    upd.staffPin = p1;
+  }
+  try {
+    await db.ref("settings").update(upd);
+    $("sPin1").value = ""; $("sPin2").value = "";
+    document.activeElement && document.activeElement.blur(); fillSettingsForm();
+    toast(upd.staffPin ? "Settings and PIN saved" : "Settings saved");
+  } catch (ex) { err.textContent = "Could not save: " + ex.message; err.hidden = false; }
+});
+
+let ordersStarted = false, orders = {}, seen = null, orderFilter = "active";
+function lockStaff() {
+  unlocked = false;
+  if (ordersStarted) { db.ref("orders").off(); ordersStarted = false; seen = null; orders = {}; }
+  $("board").innerHTML = "";
+  resetForm();
+  $("panel").hidden = true; $("gate").hidden = false; $("pinErr").hidden = true; $("pin").value = "";
+}
+$("lockBtn").addEventListener("click", () => { lockStaff(); toast("Staff panel locked"); });
+function openPanel() {
+  $("gate").hidden = true; $("panel").hidden = false;
+  if (ordersStarted) return; ordersStarted = true;
+  db.ref("orders").orderByChild("createdAt").limitToLast(300).on("value", snap => {
+    orders = snap.val() || {};
+    const ids = Object.keys(orders);
+    const fresh = seen ? ids.filter(id => !seen.has(id) && orders[id].status === "new") : [];
+    seen = new Set(ids);
+    renderBoard(fresh);
+    if (fresh.length) { beep(); toast(`New order #${orders[fresh[0]].number}`); }
+  }, err => { $("board").innerHTML = `<p class="err">Could not read orders: ${esc(err.message)}</p>`; });
+}
+
+const NEXT = { new: ["preparing", "Start preparing"], preparing: ["ready", "Mark ready"], ready: ["done", "Picked up"] };
+function renderBoard(fresh = []) {
+  const all = Object.entries(orders).map(([id, o]) => ({ id, ...o })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const active = all.filter(o => ["new", "preparing", "ready"].includes(o.status));
+  $("activeCount").textContent = active.length;
+  const list = orderFilter === "all" ? all : orderFilter === "ready" ? all.filter(o => o.status === "ready") : active;
+  if (orderFilter === "active") list.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); // oldest first in the queue
+
+  $("board").innerHTML = list.length ? list.map(o => {
+    const nx = NEXT[o.status];
+    return `<article class="ticket ${fresh.includes(o.id) ? "fresh" : ""}"><div class="in">
+      <div class="ohead"><span class="onum">#${esc(o.number)}</span><span class="pill s-${esc(o.status)}">${esc(o.status)}</span></div>
+      <div class="meta"><strong style="color:var(--ink)">${dateTimeOf(o.createdAt)}</strong></div>
+      <div class="meta">${esc(o.customerName)} · ${esc(o.phone)}${o.email ? " · " + esc(o.email) : ""}</div>
+      <ul class="lines">${(o.items || []).map((i, idx) => `<li><span class="q">${esc(i.qty)}×</span><span class="n">${esc(i.name)}${i.customText ? `<span class="custom-txt">“${esc(i.customText)}”</span>` : ""}${i.hasPhoto ? `<button type="button" class="link" style="display:block" data-photo="${o.id}" data-idx="${idx}" data-num="${esc(o.number)}">View photo</button>` : ""}</span><span class="price">${money(i.price * i.qty)}</span></li>`).join("")}</ul>
+      ${o.note ? `<div class="note">${esc(o.note)}</div>` : ""}
+      <div class="perf"></div>
+      <div class="total"><span>Total</span><span class="price">${money(o.total)}</span></div>
+      <div class="actions">
+        ${nx ? `<button type="button" class="btn small primary" data-set="${o.id}" data-status="${nx[0]}">${nx[1]}</button>` : ""}
+        ${["new", "preparing"].includes(o.status) ? `<button type="button" class="btn small danger" data-set="${o.id}" data-status="cancelled">Cancel</button>` : ""}
+        ${["done", "cancelled"].includes(o.status) ? `<button type="button" class="btn small" data-set="${o.id}" data-status="new">Reopen</button>` : ""}
+      </div>
+      ${o.email ? emailLine(o, "confirm") : ""}
+      ${o.email && o.status === "cancelled" ? emailLine(o, "cancel") : ""}
+    </div></article>`;
+  }).join("") : `<p class="empty">${orderFilter === "active" ? "No active orders. New orders appear here automatically." : "No orders here yet."}</p>`;
+}
+
+$("board").addEventListener("click", e => {
+  const b = e.target.closest("[data-set]"); if (!b) return;
+  if (b.dataset.status === "cancelled" && !b.dataset.sure) {
+    b.dataset.sure = "1"; b.textContent = "Confirm cancel";
+    setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = "Cancel"; } }, 3000);
+    return;
+  }
+  const id = b.dataset.set, status = b.dataset.status;
+  db.ref("orders/" + id).update({ status, updatedAt: TS })
+    .then(() => {
+      if (status === "cancelled") sendOrderEmail(id, null, false, "cancel");
+    })
+    .catch(ex => toast("Update failed: " + ex.message));
+});
+$("board").addEventListener("click", async e => {
+  const p = e.target.closest("[data-photo]"); if (!p) return;
+  try {
+    const s = await db.ref(`orderPhotos/${p.dataset.photo}/${p.dataset.idx}`).once("value");
+    const src = s.val();
+    if (!src) { toast("This photo couldn't be found."); return; }
+    $("lbImg").src = src;
+    $("lbTitle").textContent = `Order #${p.dataset.num} · customer photo`;
+    $("lbDownload").href = src;
+    $("lbDownload").download = `order-${p.dataset.num}-photo-${Number(p.dataset.idx) + 1}.jpg`;
+    $("lightbox").hidden = false;
+  } catch (ex) { toast("Couldn't load the photo: " + ex.message); }
+});
+const closeLb = () => { $("lightbox").hidden = true; $("lbImg").removeAttribute("src"); };
+$("lbClose").addEventListener("click", closeLb);
+$("lightbox").addEventListener("click", e => { if (e.target === $("lightbox")) closeLb(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("lightbox").hidden) closeLb(); });
+$("board").addEventListener("click", e => {
+  const r = e.target.closest("[data-resend]"); if (r) sendOrderEmail(r.dataset.resend, null, false, r.dataset.kind);
+});
+
+/* ---------- customer emails (EmailJS) ---------- */
+// EmailJS keys and template IDs are stored in the database (Settings tab), not in this file.
+//   "confirm" → sent when the customer places the order   (template: emailTemplateId)
+//   "cancel"  → sent when staff cancel the order            (template: emailCancelTemplateId)
+const msgTitle = () => (settings && settings.messageTitle) || "NFC-Beyond Store";
+const EMAIL = {
+  confirm: { tpl: "emailTemplateId",      st: "emailStatus",      at: "emailSentAt",      er: "emailError",      label: "Confirmation email", tplName: "Confirmation" },
+  cancel:  { tpl: "emailCancelTemplateId", st: "cancelEmailStatus", at: "cancelEmailSentAt", er: "cancelEmailError", label: "Cancellation email", tplName: "Cancellation" }
+};
+// Address of this order's status page, e.g. https://you.github.io/order-site/?order=-Nx1abc…
+const orderLink = id => location.origin + location.pathname + "?order=" + encodeURIComponent(id);
+const itemsText = o => (o.items || []).map(i => `${i.qty} x ${i.name}${i.customText ? ` ("${i.customText}")` : ""}${i.hasPhoto ? " + photo" : ""}`).join(", ");
+function emailMessage(o, kind) {
+  const shop = (settings && settings.shopName) || "NFC - Beyond";
+  if (kind === "cancel")
+    return `Hi ${o.customerName || ""},\n\nWe're sorry, your order #${o.number} has been cancelled.\n\nItems: ${itemsText(o)}\nTotal: ${money(o.total)}\n\nIf you have any questions, contact us at ${contactEmail()}.\n\n${shop}`;
+  return `Hi ${o.customerName || ""},\n\nWe've received your order #${o.number}.\n\nItems: ${itemsText(o)}\nTotal: ${money(o.total)}\n\nTrack your order: ${orderLink(o.id || "")}\n\nThank you for ordering from ${shop}!`;
+}
+function emailLine(o, kind) {
+  const k = EMAIL[kind], st = o[k.st], at = o[k.at], er = o[k.er];
+  const text = st === "sent" ? `${k.label} sent${at ? " at " + new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}`
+    : st === "sending" ? `Sending ${k.label.toLowerCase()}…`
+    : st === "failed" ? `<span style="color:var(--bad)">${k.label} failed${er ? ": " + esc(er) : ""}</span>`
+    : `${k.label} not sent`;
+  return `<div class="actions" style="align-items:center">
+    <span class="meta">${text}</span>
+    ${st !== "sending" ? `<button type="button" class="btn small" data-resend="${o.id}" data-kind="${kind}">${st === "sent" ? "Send again" : "Send"}</button>` : ""}
+  </div>`;
+}
+// fromCustomer = true when called from the customer's browser right after ordering (no staff toasts)
+async function sendOrderEmail(id, data, fromCustomer = false, kind = "confirm") {
+  const k = EMAIL[kind] || EMAIL.confirm;
+  const o = data || orders[id];
+  if (!o) return;
+  const say = msg => { if (!fromCustomer) toast(msg); };
+  const templateId = settings && settings[k.tpl];
+  if (!o.email) { say(`Order #${o.number} has no email address`); return; }
+  if (!(settings && settings.emailServiceId && settings.emailPublicKey && templateId)) {
+    say(`${k.label} isn't set up yet. Add the ${k.tplName} template ID in Settings.`); return;
+  }
+  if (!window.emailjs) { say("The email service didn't load. Check your connection."); return; }
+  const ref = db.ref("orders/" + id);
+  ref.update({ [k.st]: "sending" });
+  try {
+    emailjs.init({ publicKey: settings.emailPublicKey });
+    await emailjs.send(settings.emailServiceId, templateId, {
+      // the same address under the names EmailJS templates commonly use for "To Email"
+      to_email: o.email, email: o.email, user_email: o.email, recipient: o.email, to: o.email,
+      reply_to: contactEmail(),            // customer replies go to the shop
+      to_name: o.customerName || "",
+      subject: msgTitle(),
+      title: msgTitle(),
+      order_id: String(o.number),          // {{order_id}}
+      order_number: String(o.number),
+      order_total: money(o.total),         // {{order_total}}
+      order_items: itemsText(o),           // {{order_items}}
+      order_date: dateTimeOf(o.createdAt) || new Date().toLocaleString(),   // {{order_date}}
+      contact_email: contactEmail(),       // {{contact_email}}
+      order_link: orderLink(id),           // {{order_link}}  → status page for this order
+      message: emailMessage({ ...o, id }, kind)   // {{message}}
+    }, { publicKey: settings.emailPublicKey });
+    await ref.update({ [k.st]: "sent", [k.at]: TS, [k.er]: null });
+    toast(fromCustomer ? `Confirmation sent to ${o.email}` : `${k.label} sent to ${o.email}`);
+  } catch (ex) {
+    const why = (ex && (ex.text || ex.message)) || "unknown error";
+    await ref.update({ [k.st]: "failed", [k.er]: String(why).slice(0, 200) });
+    say(`${k.label} failed: ` + why);
+  }
+}
+document.querySelectorAll("[data-of]").forEach(c => c.addEventListener("click", () => {
+  document.querySelectorAll("[data-of]").forEach(x => x.classList.toggle("on", x === c));
+  orderFilter = c.dataset.of; renderBoard();
+}));
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === t));
+  ["orders", "menu", "settings"].forEach(n => $("tab-" + n).hidden = t.dataset.tab !== n);
+  if (t.dataset.tab === "settings") fillSettingsForm();
+}));
+
+let audioCtx;
+function beep() {
+  if (!$("soundOn").checked) return;
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.18].forEach(d => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.2, audioCtx.currentTime + d);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d + 0.15);
+      o.start(audioCtx.currentTime + d); o.stop(audioCtx.currentTime + d + 0.16);
+    });
+  } catch {}
+}
+
+/* ---------- menu admin ---------- */
+let editingId = null;
+function renderAdmin() {
+  const items = sortedItems();
+  $("catList").innerHTML = [...new Set(items.map(i => i.category).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
+  $("adminRows").innerHTML = items.length ? items.map(i => `<tr>
+      <td>${safeImg(i.image) ? `<img class="thumb" src="${esc(i.image)}" alt="">` : `<span class="thumb none">No photo</span>`}</td>
+      <td class="${i.available === false ? "off" : ""}"><strong>${esc(i.name)}</strong>${i.custom ? `${i.photoMode === "only" ? "" : `<span class="tag">Custom text</span>`}${i.photoMode === "required" ? `<span class="tag">Photo required</span>` : i.photoMode === "only" ? `<span class="tag">Photo only</span>` : ""}` : ""}</td>
+      <td>${esc(i.category || "—")}</td>
+      <td class="price">${money(i.price)}</td>
+      <td><button type="button" class="pill ${i.available === false ? "s-cancelled" : "s-ready"}" style="border:0" data-toggle="${i.id}" title="Click to switch">${i.available === false ? "Hidden" : "On menu"}</button></td>
+      <td><div class="actions" style="flex-wrap:nowrap">
+        <button type="button" class="btn small" data-edit="${i.id}">Edit</button>
+        <button type="button" class="btn small danger" data-del="${i.id}">Delete</button>
+      </div></td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty">No menu items yet. Add your first item with the form.</td></tr>`;
+}
+
+/* ---------- item photos ---------- */
+// Photos are shrunk to max 640px JPEG (~50 KB) and stored with the item in the database.
+let formImage = "";
+function safeImg(src) { return typeof src === "string" && (/^data:image\//.test(src) || /^https?:\/\//.test(src)); }
+function setFormImage(src) {
+  formImage = src || "";
+  const has = !!formImage;
+  $("photoPreview").hidden = !has; if (has) $("photoPreview").src = formImage; else $("photoPreview").removeAttribute("src");
+  $("photoDrop").hidden = has; $("photoActions").hidden = !has;
+  if (!/^https?:\/\//.test(formImage)) $("iPhotoUrl").value = "";
+}
+function resizeImage(file, max = 640, quality = 0.78) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file isn't an image this browser can read.")); };
+    img.src = url;
+  });
+}
+async function takePhoto(file) {
+  if (!file) return;
+  if (!file.type.startsWith("image/")) { $("itemErr").textContent = "Choose an image file (JPG, PNG, WebP)."; $("itemErr").hidden = false; return; }
+  try { $("itemErr").hidden = true; setFormImage(await resizeImage(file)); }
+  catch (ex) { $("itemErr").textContent = ex.message; $("itemErr").hidden = false; }
+}
+$("iPhoto").addEventListener("change", e => { takePhoto(e.target.files[0]); e.target.value = ""; });
+$("removePhotoBtn").addEventListener("click", () => setFormImage(""));
+$("iPhotoUrl").addEventListener("change", e => {
+  const v = e.target.value.trim();
+  if (!v) { if (/^https?:\/\//.test(formImage)) setFormImage(""); return; }
+  if (/^https?:\/\//.test(v)) { setFormImage(v); $("iPhotoUrl").value = v; }
+  else { $("itemErr").textContent = "Image links must start with https://"; $("itemErr").hidden = false; }
+});
+["dragenter", "dragover"].forEach(ev => $("photoDrop").addEventListener(ev, e => { e.preventDefault(); $("photoDrop").classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => $("photoDrop").addEventListener(ev, e => { e.preventDefault(); $("photoDrop").classList.remove("over"); }));
+$("photoDrop").addEventListener("drop", e => takePhoto(e.dataTransfer.files[0]));
+
+function syncCustomFields() {
+  const on = $("iCustom").checked;
+  $("iPhotoModeWrap").hidden = !on;
+  $("iCustomLabelWrap").hidden = !on || $("iPhotoMode").value === "only";
+}
+$("iCustom").addEventListener("change", syncCustomFields);
+$("iPhotoMode").addEventListener("change", syncCustomFields);
+function resetForm() {
+  editingId = null; $("itemForm").reset(); $("iAvail").checked = true; setFormImage("");
+  $("iCustomLabelWrap").hidden = true; $("iPhotoModeWrap").hidden = true; $("iPhotoMode").value = "optional";
+  $("formTitle").textContent = "Add item"; $("saveItemBtn").textContent = "Add item";
+  $("cancelEditBtn").hidden = true; $("itemErr").hidden = true;
+}
+$("cancelEditBtn").addEventListener("click", resetForm);
+
+$("itemForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("itemErr"); err.hidden = true;
+  const name = $("iName").value.trim(), price = parseFloat($("iPrice").value);
+  if (!name) { err.textContent = "Give the item a name."; err.hidden = false; return; }
+  if (!(price >= 0)) { err.textContent = "Enter a price of 0 or more."; err.hidden = false; return; }
+  const data = {
+    name, price: Number(price.toFixed(dec())),
+    category: $("iCat").value.trim() || "Other",
+    description: $("iDesc").value.trim(),
+    available: $("iAvail").checked, updatedAt: TS,
+    custom: $("iCustom").checked,
+    customLabel: $("iCustom").checked ? ($("iCustomLabel").value.trim() || "Your custom text") : null,
+    photoMode: $("iCustom").checked ? $("iPhotoMode").value : null,
+    image: formImage || null
+  };
+  try {
+    if (editingId) { await db.ref("menu/" + editingId).update(data); toast("Item updated"); }
+    else { await db.ref("menu").push({ ...data, createdAt: TS }); toast("Item added"); }
+    resetForm();
+  } catch (ex) { err.textContent = "Could not save: " + ex.message; err.hidden = false; }
+});
+
+$("adminRows").addEventListener("click", e => {
+  const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]"), tg = e.target.closest("[data-toggle]");
+  if (ed) {
+    const i = menu[ed.dataset.edit]; editingId = ed.dataset.edit;
+    $("iName").value = i.name || ""; $("iCat").value = i.category || ""; $("iPrice").value = i.price ?? "";
+    $("iDesc").value = i.description || ""; $("iAvail").checked = i.available !== false;
+    $("iCustom").checked = !!i.custom; $("iCustomLabel").value = i.customLabel || ""; $("iCustomLabelWrap").hidden = !i.custom;
+    $("iPhotoMode").value = i.photoMode || "optional"; syncCustomFields();
+    setFormImage(safeImg(i.image) ? i.image : "");
+    if (/^https?:\/\//.test(formImage)) $("iPhotoUrl").value = formImage;
+    $("formTitle").textContent = "Edit item"; $("saveItemBtn").textContent = "Save changes"; $("cancelEditBtn").hidden = false;
+    $("iName").focus();
+  } else if (del) {
+    if (!del.dataset.sure) {
+      del.dataset.sure = "1"; del.textContent = "Confirm";
+      setTimeout(() => { if (del.isConnected) { delete del.dataset.sure; del.textContent = "Delete"; } }, 3000);
+      return;
+    }
+    db.ref("menu/" + del.dataset.del).remove().then(() => { toast("Item deleted"); if (editingId === del.dataset.del) resetForm(); });
+  } else if (tg) {
+    db.ref("menu/" + tg.dataset.toggle).update({ available: menu[tg.dataset.toggle].available === false, updatedAt: TS });
+  }
+});
+
+/* =================================================================
+   CONTACT  (email address lives in the database: settings/contactEmail)
+   ================================================================= */
+function contactEmail() { return (settings && settings.contactEmail) || "nfc.beyond.kw@gmail.com"; }
+function renderContact() {
+  const m = contactEmail();
+  $("contactEmail").textContent = m;
+  $("mailtoLink").href = "mailto:" + m;
+}
+$("contactLink").addEventListener("click", e => {
+  e.preventDefault();
+  renderContact();
+  $("contactBox").hidden = !$("contactBox").hidden;
+  if (!$("contactBox").hidden) $("contactBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
+$("closeContactBtn").addEventListener("click", () => { $("contactBox").hidden = true; });
+$("copyEmailBtn").addEventListener("click", () => {
+  const m = contactEmail();
+  const fallback = () => {
+    const r = document.createRange(); r.selectNodeContents($("contactEmail"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    toast("Email selected. Copy it from your keyboard menu.");
+  };
+  try { navigator.clipboard.writeText(m).then(() => toast("Email copied"), fallback); } catch { fallback(); }
+});
+
+/* =================================================================
+   ROUTING  (#staff = staff panel, anything else = customer)
+   ================================================================= */
+function route() {
+  const staff = location.hash === "#staff";
+  $("customer").hidden = staff; $("staff").hidden = !staff;
+  $("viewLabel").textContent = staff ? "Staff panel" : "Order online";
+  if (staff && unlocked) openPanel();
+  if (!staff && unlocked) lockStaff();   // leaving the staff page locks it again
+  if (staff && !unlocked) setTimeout(() => $("pin").focus(), 0);
+  renderCart();
+}
+window.addEventListener("hashchange", route);
+$("toCustomer").addEventListener("click", e => { e.preventDefault(); history.pushState("", "", location.pathname); route(); });
+
+// A link like  …/index.html?order=<id>  (from the confirmation email) opens that order's status page.
+const linkedOrder = new URLSearchParams(location.search).get("order");
+const savedOrder = linkedOrder || store.get("myOrder");
+if (linkedOrder && /^[A-Za-z0-9_-]{6,40}$/.test(linkedOrder)) store.set("myOrder", linkedOrder);
+if (savedOrder && /^[A-Za-z0-9_-]{6,40}$/.test(savedOrder)) showTracker(savedOrder);
+route();
+</script>
+</body>
+</html>
